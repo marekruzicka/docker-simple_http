@@ -32,7 +32,7 @@
 HTTP_PORT=80
 HTTP_PORT_PUBLISH=8080
 
-docker run -d --rm --net=host -p $HTTP_PORT_PUBLISH:$HTTP_PORT --name $APP_NAME $IMAGE
+docker run -d --rm -p $HTTP_PORT_PUBLISH:$HTTP_PORT --name $APP_NAME $IMAGE
 
 
 # testing loop
@@ -43,23 +43,27 @@ counter=0
 limit=10
 while [[ $counter -lt $limit ]]; do 
         
-        # let's check if we can find listening socket, and stop the test if yes
-        nc -z -w 1 127.0.0.1 $HTTP_PORT_PUBLISH && break
+        # let's check if we can get reply from the server, and stop
+        http_proxy="" curl -Is http://127.0.0.1:8080 | head -1 | grep "HTTP/1.1 200 OK"
 
-        # if we did not detect the socket, let's wait for a second, increment the counter and repeat
-        echo -n ". "
-        sleep 1
-        ((counter++))
+        if [[ $? -eq 0 ]]; then
+          break
+        else
+          # if we did not get proper reply, let's wait for a second, increment the counter and repeat
+          echo -n ". "
+          sleep 1
+          ((counter++))
+        fi
 done
 
 ## evaluation
-#If counter does not equal 30, it means we jumped out of the loop within 30s because our test passed
+#If counter does not equal limit, it means we jumped out of the loop within "limit" s because our test passed
 
 if [[ $counter -ne $limit ]]; then
         echo -e "\n$APP_NAME is UP"
 else
 
-# If it does equal 30, our application does not work, or it needs more than 30s to start.
+# If it does equal limit, our application does not work, or it needs more than "limit" s to start.
         echo -e "\n$APP_NAME did not come up within the time limit... exiting(1)."
         exit 1
 fi
